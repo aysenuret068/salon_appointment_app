@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/owner_home_screen.dart';
+import 'admin/screens/admin_login_screen.dart';
+import 'admin/screens/admin_dashboard_screen.dart';
+import 'admin/services/admin_session.dart';
 
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await AdminSession.restore();
   runApp(const SalonAppointmentApp());
 }
 
@@ -30,6 +33,12 @@ class SalonAppointmentApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/customer-home': (context) => const CustomerHomeScreen(),
         '/owner-home': (context) => const OwnerHomeScreen(),
+        '/admin-panel/login': (context) => AdminSession.isAuthenticated
+            ? const AdminDashboardScreen()
+            : const AdminLoginScreen(),
+        '/admin-panel': (context) => AdminSession.isAuthenticated
+            ? const AdminDashboardScreen()
+            : const AdminLoginScreen(),
       },
 
       builder: (context, child) {
