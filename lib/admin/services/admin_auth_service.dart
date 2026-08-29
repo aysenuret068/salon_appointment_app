@@ -25,8 +25,9 @@ class AdminAuthService {
         'Bu hesabın yönetim paneline erişim yetkisi bulunmuyor.',
       );
     }
-    if (response.statusCode == 401)
+    if (response.statusCode == 401) {
       throw const AdminAuthException('Email veya şifre hatalı.');
+    }
     if (response.statusCode != 200) {
       throw const AdminAuthException(
         'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.',

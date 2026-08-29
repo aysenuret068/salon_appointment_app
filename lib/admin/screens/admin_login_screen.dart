@@ -31,12 +31,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         password: _password.text,
       );
       await AdminSession.save(session);
-      if (mounted)
+      if (mounted) {
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/admin-panel',
           (_) => false,
         );
+      }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
