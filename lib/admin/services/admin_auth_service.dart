@@ -11,22 +11,32 @@ class AdminAuthException implements Exception {
 }
 
 class AdminAuthService {
-  Future<AdminSessionData> login({required String email, required String password}) async {
+  Future<AdminSessionData> login({
+    required String email,
+    required String password,
+  }) async {
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/admin/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email.trim(), 'password': password}),
     );
     if (response.statusCode == 403) {
-      throw const AdminAuthException('Bu hesabın yönetim paneline erişim yetkisi bulunmuyor.');
+      throw const AdminAuthException(
+        'Bu hesabın yönetim paneline erişim yetkisi bulunmuyor.',
+      );
     }
-    if (response.statusCode == 401) throw const AdminAuthException('Email veya şifre hatalı.');
+    if (response.statusCode == 401)
+      throw const AdminAuthException('Email veya şifre hatalı.');
     if (response.statusCode != 200) {
-      throw const AdminAuthException('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
+      throw const AdminAuthException(
+        'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.',
+      );
     }
     final session = AdminSessionData.fromJson(jsonDecode(response.body));
     if (!session.isAdmin) {
-      throw const AdminAuthException('Bu hesabın yönetim paneline erişim yetkisi bulunmuyor.');
+      throw const AdminAuthException(
+        'Bu hesabın yönetim paneline erişim yetkisi bulunmuyor.',
+      );
     }
     return session;
   }

@@ -20,18 +20,22 @@ void main() {
     expect(find.text('Yetkili Personel Girişi'), findsNothing);
   });
 
-  testWidgets('/admin-panel/login displays distinct admin login', (tester) async {
+  testWidgets('/admin-panel/login displays distinct admin login', (
+    tester,
+  ) async {
     await tester.pumpWidget(const SalonAppointmentApp());
-    Navigator.of(tester.element(find.text('Salon Randevu')))
-        .pushNamed('/admin-panel/login');
+    Navigator.of(
+      tester.element(find.text('Salon Randevu')),
+    ).pushNamed('/admin-panel/login');
     await tester.pumpAndSettle();
     expect(find.text('Yetkili Personel Girişi'), findsOneWidget);
   });
 
   testWidgets('unauthenticated /admin-panel is guarded', (tester) async {
     await tester.pumpWidget(const SalonAppointmentApp());
-    Navigator.of(tester.element(find.text('Salon Randevu')))
-        .pushNamed('/admin-panel');
+    Navigator.of(
+      tester.element(find.text('Salon Randevu')),
+    ).pushNamed('/admin-panel');
     await tester.pumpAndSettle();
     expect(find.text('Yetkili Personel Girişi'), findsOneWidget);
   });
