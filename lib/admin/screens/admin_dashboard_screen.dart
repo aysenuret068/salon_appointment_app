@@ -6,12 +6,13 @@ class AdminDashboardScreen extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     await AdminSession.clear();
-    if (context.mounted)
+    if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/admin-panel/login',
         (_) => false,
       );
+    }
   }
 
   @override
