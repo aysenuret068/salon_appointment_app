@@ -80,7 +80,6 @@ class AdminLabels {
         'Customer': 'Müşteri',
         'BusinessOwner': 'İşletme Sahibi',
         'Admin': 'Admin',
-        'SuperAdmin': 'Süper Admin',
       }[value] ??
       value ??
       '-';

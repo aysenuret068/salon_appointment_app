@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import '../services/admin_api_service.dart';
 import '../services/admin_session.dart';
 import '../utils/admin_labels.dart';
@@ -37,15 +35,6 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       icon: Icons.calendar_month_outlined,
     ),
     (title: 'Yorumlar', path: 'reviews', icon: Icons.reviews_outlined),
-    (title: 'İçerik Yönetimi', path: 'content', icon: Icons.article_outlined),
-    (title: 'Duyurular', path: 'announcements', icon: Icons.campaign_outlined),
-    (title: 'Sık Sorulan Sorular', path: 'faq', icon: Icons.help_outline),
-    (
-      title: 'Medya Kütüphanesi',
-      path: 'media',
-      icon: Icons.perm_media_outlined,
-    ),
-    (title: 'Ayarlar', path: 'settings', icon: Icons.settings_outlined),
     (title: 'İşlem Kayıtları', path: 'audit-logs', icon: Icons.history),
     (title: 'Raporlar', path: 'reports', icon: Icons.analytics_outlined),
     (
@@ -55,6 +44,7 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
     ),
   ];
   final api = AdminApiService();
+  final _tableHorizontalController = ScrollController();
   int selected = 0, page = 1;
   bool loading = true;
   String? error;
@@ -68,6 +58,12 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
     load();
   }
 
+  @override
+  void dispose() {
+    _tableHorizontalController.dispose();
+    super.dispose();
+  }
+
   Future<void> load() async {
     setState(() {
       loading = true;
@@ -77,8 +73,8 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       final v = await api.get(
         path,
         query: {
-          if (selected > 0 && selected < 14) 'page': page,
-          if (selected > 0 && selected < 14) 'pageSize': 25,
+          if (selected > 0 && selected < sections.length - 2) 'page': page,
+          if (selected > 0 && selected < sections.length - 2) 'pageSize': 25,
         },
       );
       if (mounted) setState(() => data = v);
@@ -313,15 +309,9 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
 
   bool get manageable =>
       !{'dashboard', 'audit-logs', 'reports', 'system-status'}.contains(path);
-  bool get canCreate => {
-    'content',
-    'announcements',
-    'faq',
-    'employee-services',
-    'media',
-  }.contains(path);
+  bool get canCreate =>
+      {'users', 'businesses', 'employees', 'services'}.contains(path);
   Widget table(List<Map<String, dynamic>> items, Map<String, dynamic> meta) {
-    if (items.isEmpty) return Center(child: state('Kayıt bulunamadı.', false));
     final cols = items
         .expand((x) => x.keys)
         .toSet()
@@ -346,67 +336,69 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: orange),
-                onPressed: () => path == 'media' ? uploadMedia() : edit(null),
-                icon: Icon(path == 'media' ? Icons.upload : Icons.add),
-                label: Text(
-                  path == 'media'
-                      ? 'Görsel Yükle'
-                      : path == 'faq'
-                      ? 'Soru Ekle'
-                      : path == 'announcements'
-                      ? 'Duyuru Ekle'
-                      : 'Ekle',
-                ),
+                onPressed: () => edit(null),
+                icon: const Icon(Icons.add),
+                label: Text(switch (path) {
+                  'users' => 'Kullanıcı Ekle',
+                  'businesses' => 'İşletme Ekle',
+                  'employees' => 'Çalışan Ekle',
+                  _ => 'Hizmet Ekle',
+                }),
               ),
             ),
           ),
         Expanded(
-          child: Scrollbar(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
-                child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(
-                    const Color(0xFF1E293B),
-                  ),
-                  columns: [
-                    ...cols.map(
-                      (x) => DataColumn(
-                        label: Text(
-                          AdminLabels.field(x),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+          child: items.isEmpty
+              ? Center(child: state('Kayıt bulunamadı.', false))
+              : Scrollbar(
+                  controller: _tableHorizontalController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _tableHorizontalController,
+                    padding: const EdgeInsets.all(20),
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(
+                          const Color(0xFF1E293B),
                         ),
+                        columns: [
+                          ...cols.map(
+                            (x) => DataColumn(
+                              label: Text(
+                                AdminLabels.field(x),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (manageable)
+                            const DataColumn(
+                              label: Text(
+                                'İşlemler',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                        rows: items
+                            .map(
+                              (r) => DataRow(
+                                cells: [
+                                  ...cols.map((k) => DataCell(cell(k, r[k]))),
+                                  if (manageable) DataCell(actions(r)),
+                                ],
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
-                    if (manageable)
-                      const DataColumn(
-                        label: Text(
-                          'İşlemler',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                  rows: items
-                      .map(
-                        (r) => DataRow(
-                          cells: [
-                            ...cols.map((k) => DataCell(cell(k, r[k]))),
-                            if (manageable) DataCell(actions(r)),
-                          ],
-                        ),
-                      )
-                      .toList(),
+                  ),
                 ),
-              ),
-            ),
-          ),
         ),
         if (meta['totalPages'] is num && (meta['totalPages'] as num) > 1)
           Padding(
@@ -511,16 +503,7 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
     final out = <(String, IconData, String)>[
       ('view', Icons.visibility_outlined, 'Görüntüle'),
     ];
-    if ({
-      'users',
-      'businesses',
-      'employees',
-      'services',
-      'content',
-      'announcements',
-      'faq',
-      'settings',
-    }.contains(path)) {
+    if ({'users', 'businesses', 'employees', 'services'}.contains(path)) {
       out.add(('edit', Icons.edit_outlined, 'Düzenle'));
     }
     if ({'users', 'businesses', 'employees', 'services'}.contains(path)) {
@@ -553,16 +536,10 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       'businesses',
       'employees',
       'services',
-      'employee-services',
       'reviews',
-      'content',
-      'announcements',
-      'faq',
-      'media',
     }.contains(path)) {
       out.add(('delete', Icons.delete_outline, 'Sil'));
     }
-    if (path == 'media') out.add(('copy', Icons.copy, 'URL Kopyala'));
     return out;
   }
 
@@ -574,11 +551,6 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       }
       if (action == 'edit') {
         await edit(row);
-        return;
-      }
-      if (action == 'copy') {
-        await Clipboard.setData(ClipboardData(text: '${row['url']}'));
-        notice('URL panoya kopyalandı.');
         return;
       }
       if (action == 'status') {
@@ -720,35 +692,14 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       'phone': 'Telefon',
       'openTime': 'Açılış Saati',
       'closeTime': 'Kapanış Saati',
-      'ownerUserId': 'Sahip ID',
     },
-    'employees' => {'fullName': 'Ad Soyad', 'businessId': 'İşletme ID'},
+    'employees' => {'fullName': 'Ad Soyad'},
     'services' => {
       'name': 'Ad',
       'price': 'Fiyat',
       'durationMinutes': 'Süre',
       'bufferMinutes': 'Ara Süre',
     },
-    'employee-services' => {
-      'employeeId': 'Çalışan ID',
-      'serviceId': 'Hizmet ID',
-    },
-    'content' => {
-      'key': 'Anahtar',
-      'title': 'Başlık',
-      'value': 'Değer',
-      'contentType': 'İçerik Türü',
-      'group': 'Grup',
-      'imageUrl': 'Görsel URL',
-    },
-    'announcements' => {
-      'title': 'Başlık',
-      'body': 'İçerik',
-      'startAt': 'Başlangıç',
-      'endAt': 'Bitiş',
-    },
-    'faq' => {'question': 'Soru', 'answer': 'Cevap', 'sortOrder': 'Sıra'},
-    'settings' => {'value': 'Değer'},
     _ => {},
   };
   dynamic converted(String key, String value) {
@@ -772,36 +723,50 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
         : value.trim();
   }
 
-  Future<void> uploadMedia() async {
-    final files = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-    );
-    if (files.isEmpty) return;
-    final file = files.single;
-    final bytes = await file.readAsBytes();
-    if (bytes.isEmpty) {
-      notice('Dosya okunamadı.', error: true);
-      return;
-    }
-    try {
-      await api.upload('media', bytes, file.name);
-      notice('Dosya başarıyla yüklendi.');
-      await load();
-    } catch (e) {
-      notice(e.toString(), error: true);
-    }
-  }
-
   Future<void> edit(Map<String, dynamic>? row) async {
     final fields = formFields();
     if (fields.isEmpty) return;
+    final dialogFields = {
+      ...fields,
+      if (path == 'users' && row == null) 'password': 'Şifre',
+      if (path == 'users' && row == null) 'passwordConfirm': 'Şifre Tekrarı',
+    };
+    var lookup = <Map<String, dynamic>>[];
+    if (path == 'businesses' || path == 'employees' || path == 'services') {
+      try {
+        final result = await api.get(
+          path == 'businesses'
+              ? 'lookups/business-owners'
+              : 'lookups/businesses',
+        );
+        lookup = (result as List)
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      } catch (e) {
+        notice(e.toString(), error: true);
+        return;
+      }
+      if (lookup.isEmpty) {
+        notice(
+          path == 'businesses'
+              ? 'Aktif işletme sahibi bulunamadı.'
+              : 'Aktif işletme bulunamadı.',
+          error: true,
+        );
+        return;
+      }
+    }
     final c = {
-      for (final e in fields.entries)
+      for (final e in dialogFields.entries)
         e.key: TextEditingController(text: '${row?[e.key] ?? ''}'),
     };
     var active = row?['isActive'] != false;
     var role = '${row?['role'] ?? 'Customer'}';
+    var relationId =
+        row?[path == 'businesses' ? 'ownerUserId' : 'businessId'] as int?;
+    relationId ??= lookup.isEmpty ? null : lookup.first['id'] as int;
+    if (!mounted) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -817,11 +782,50 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final e in fields.entries)
+                  if (lookup.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DropdownButtonFormField<int>(
+                        initialValue: relationId,
+                        dropdownColor: panel,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: path == 'businesses'
+                              ? 'İşletme Sahibi'
+                              : 'İşletme',
+                        ),
+                        items: lookup
+                            .map(
+                              (item) => DropdownMenuItem<int>(
+                                value: item['id'] as int,
+                                child: Text(
+                                  '${item['fullName'] ?? item['name']}'
+                                  '${item['email'] == null ? '' : ' — ${item['email']}'}',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) =>
+                            setLocal(() => relationId = value),
+                      ),
+                    ),
+                  for (final e in dialogFields.entries)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TextField(
                         controller: c[e.key],
+                        obscureText:
+                            e.key == 'password' || e.key == 'passwordConfirm',
+                        keyboardType:
+                            {
+                              'price',
+                              'durationMinutes',
+                              'bufferMinutes',
+                            }.contains(e.key)
+                            ? TextInputType.number
+                            : e.key == 'email'
+                            ? TextInputType.emailAddress
+                            : null,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           labelText: e.value,
@@ -836,20 +840,14 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
                       initialValue: role,
                       dropdownColor: panel,
                       style: const TextStyle(color: Colors.white),
-                      items:
-                          const [
-                                'Customer',
-                                'BusinessOwner',
-                                'Admin',
-                                'SuperAdmin',
-                              ]
-                              .map(
-                                (x) => DropdownMenuItem(
-                                  value: x,
-                                  child: Text(AdminLabels.role(x)),
-                                ),
-                              )
-                              .toList(),
+                      items: const ['Customer', 'BusinessOwner', 'Admin']
+                          .map(
+                            (x) => DropdownMenuItem(
+                              value: x,
+                              child: Text(AdminLabels.role(x)),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setLocal(() => role = v ?? role),
                       decoration: const InputDecoration(labelText: 'Rol'),
                     ),
@@ -858,9 +856,6 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
                     'businesses',
                     'employees',
                     'services',
-                    'content',
-                    'announcements',
-                    'faq',
                   }.contains(path))
                     SwitchListTile(
                       value: active,
@@ -896,12 +891,10 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       return;
     }
     final requiredKeys = <String>{
-      if (path == 'users') ...['fullName', 'email'],
+      if (path == 'users') ...['fullName', 'email', 'phone'],
+      if (path == 'users' && row == null) ...['password', 'passwordConfirm'],
       if (path == 'businesses' || path == 'services') 'name',
       if (path == 'employees') 'fullName',
-      if (path == 'content') ...['key', 'title'],
-      if (path == 'announcements') 'title',
-      if (path == 'faq') ...['question', 'answer'],
     };
     if (requiredKeys.any((key) => c[key]!.text.trim().isEmpty)) {
       for (final x in c.values) {
@@ -910,18 +903,39 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       notice('Zorunlu alanları doldurun.', error: true);
       return;
     }
+    if (path == 'users' && row == null) {
+      if (c['password']!.text.length < 8) {
+        for (final x in c.values) {
+          x.dispose();
+        }
+        notice('Şifre en az 8 karakter olmalıdır.', error: true);
+        return;
+      }
+      if (c['password']!.text != c['passwordConfirm']!.text) {
+        for (final x in c.values) {
+          x.dispose();
+        }
+        notice('Şifreler eşleşmiyor.', error: true);
+        return;
+      }
+    }
+    if (path == 'services' &&
+        (converted('price', c['price']!.text) == null ||
+            converted('durationMinutes', c['durationMinutes']!.text) == null ||
+            converted('bufferMinutes', c['bufferMinutes']!.text) == null)) {
+      for (final x in c.values) {
+        x.dispose();
+      }
+      notice('Fiyat ve süre alanlarına geçerli sayılar girin.', error: true);
+      return;
+    }
     final body = {
-      for (final e in c.entries) e.key: converted(e.key, e.value.text),
+      for (final e in c.entries)
+        if (e.key != 'passwordConfirm') e.key: converted(e.key, e.value.text),
       if (path == 'users') 'role': role,
-      if ({
-        'users',
-        'businesses',
-        'employees',
-        'services',
-        'content',
-        'announcements',
-        'faq',
-      }.contains(path))
+      if (path == 'businesses') 'ownerUserId': relationId,
+      if (path == 'employees' || path == 'services') 'businessId': relationId,
+      if ({'users', 'businesses', 'employees', 'services'}.contains(path))
         'isActive': active,
     };
     for (final x in c.values) {
@@ -936,9 +950,14 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
         await api.put('$path/${row['id']}', body);
       }
       notice(
-        row == null
-            ? 'Kayıt başarıyla oluşturuldu.'
-            : 'Kayıt başarıyla güncellendi.',
+        row != null
+            ? 'Kayıt başarıyla güncellendi.'
+            : switch (path) {
+                'users' => 'Kullanıcı başarıyla oluşturuldu.',
+                'businesses' => 'İşletme başarıyla oluşturuldu.',
+                'employees' => 'Çalışan başarıyla oluşturuldu.',
+                _ => 'Hizmet başarıyla oluşturuldu.',
+              },
       );
       await load();
     } catch (e) {

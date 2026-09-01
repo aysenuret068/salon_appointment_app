@@ -13,7 +13,7 @@ class AdminSessionData {
   final String role;
   final String accessToken;
   final DateTime expiresAt;
-  bool get isAdmin => role == 'Admin' || role == 'SuperAdmin';
+  bool get isAdmin => role == 'Admin';
   bool get isValid =>
       isAdmin &&
       accessToken.isNotEmpty &&

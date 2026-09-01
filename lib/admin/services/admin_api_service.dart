@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../../services/api_service.dart';
 import 'admin_session.dart';
@@ -22,29 +21,6 @@ class AdminApiService {
   Future<dynamic> patch(String path, [Object? body]) =>
       _send('PATCH', path, body: body);
   Future<dynamic> delete(String path) => _send('DELETE', path);
-  Future<dynamic> upload(String path, Uint8List bytes, String fileName) async {
-    final session = AdminSession.current;
-    if (session == null || !session.isValid) {
-      throw const AdminApiException('Oturum süresi doldu.', 401);
-    }
-    final request =
-        http.MultipartRequest(
-            'POST',
-            Uri.parse('${ApiService.baseUrl}/admin/$path'),
-          )
-          ..headers['Authorization'] = 'Bearer ${session.accessToken}'
-          ..files.add(
-            http.MultipartFile.fromBytes('file', bytes, filename: fileName),
-          );
-    try {
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      return _decode(response);
-    } catch (_) {
-      throw const AdminApiException('Sunucuya bağlanılamadı.', 0);
-    }
-  }
-
   Future<dynamic> _send(
     String method,
     String path, {

@@ -297,7 +297,7 @@ class _OwnerBusinessDetailScreenState extends State<OwnerBusinessDetailScreen> {
                 width: 62,
                 height: 62,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
+                  color: Colors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Icon(
@@ -363,7 +363,7 @@ class _OwnerBusinessDetailScreenState extends State<OwnerBusinessDetailScreen> {
       children: [
         Icon(
           icon,
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           size: 19,
         ),
         const SizedBox(width: 8),
@@ -828,7 +828,7 @@ class _OwnerBusinessDetailScreenState extends State<OwnerBusinessDetailScreen> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(19),
             ),
             child: const Icon(
