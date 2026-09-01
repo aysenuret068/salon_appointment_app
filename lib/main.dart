@@ -40,6 +40,20 @@ class SalonAppointmentApp extends StatelessWidget {
             ? const AdminDashboardScreen()
             : const AdminLoginScreen(),
       },
+      onGenerateRoute: (settings) {
+        const prefix = '/admin-panel/';
+        final name = settings.name;
+        if (name != null && name.startsWith(prefix)) {
+          final module = name.substring(prefix.length);
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => AdminSession.isAuthenticated
+                ? AdminDashboardScreen(initialPath: module)
+                : const AdminLoginScreen(),
+          );
+        }
+        return null;
+      },
 
       builder: (context, child) {
         return ScrollConfiguration(
