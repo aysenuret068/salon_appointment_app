@@ -164,7 +164,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget buildRoleSelector() {
     return DropdownButtonFormField<String>(
-      value: selectedRole,
+      initialValue: selectedRole,
       decoration: const InputDecoration(
         labelText: 'Hesap Türü',
         prefixIcon: Icon(Icons.manage_accounts_outlined),

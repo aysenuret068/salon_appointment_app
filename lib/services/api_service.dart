@@ -10,8 +10,10 @@ import '../models/slot_model.dart';
 import '../models/review_model.dart';
 
 class ApiService {
-  static const String baseUrl =
-    'https://onlineesistem-api.onrender.com/api';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://onlineesistem-api.onrender.com/api',
+  );
 
   Future<AppUserModel> register({
     required String fullName,

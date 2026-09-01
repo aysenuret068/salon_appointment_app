@@ -155,7 +155,7 @@ class _EmployeeSelectScreenState extends State<EmployeeSelectScreen> {
             width: 62,
             height: 62,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(22),
             ),
             child: const Icon(

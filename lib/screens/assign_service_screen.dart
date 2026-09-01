@@ -307,7 +307,7 @@ class _AssignServiceScreenState extends State<AssignServiceScreen> {
             const SizedBox(height: 18),
             buildEmptyWarning(),
             DropdownButtonFormField<int>(
-              value: selectedEmployeeId,
+              initialValue: selectedEmployeeId,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Çalışan Seç',
@@ -332,7 +332,7 @@ class _AssignServiceScreenState extends State<AssignServiceScreen> {
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<int>(
-              value: selectedServiceId,
+              initialValue: selectedServiceId,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Hizmet Seç',
