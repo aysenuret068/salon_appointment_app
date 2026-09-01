@@ -309,8 +309,13 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
 
   bool get manageable =>
       !{'dashboard', 'audit-logs', 'reports', 'system-status'}.contains(path);
-  bool get canCreate =>
-      {'users', 'businesses', 'employees', 'services'}.contains(path);
+  bool get canCreate => {
+    'users',
+    'businesses',
+    'employees',
+    'services',
+    'employee-services',
+  }.contains(path);
   Widget table(List<Map<String, dynamic>> items, Map<String, dynamic> meta) {
     final cols = items
         .expand((x) => x.keys)
@@ -336,12 +341,15 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: orange),
-                onPressed: () => edit(null),
+                onPressed: () => path == 'employee-services'
+                    ? assignEmployeeService()
+                    : edit(null),
                 icon: const Icon(Icons.add),
                 label: Text(switch (path) {
                   'users' => 'Kullanıcı Ekle',
                   'businesses' => 'İşletme Ekle',
                   'employees' => 'Çalışan Ekle',
+                  'employee-services' => 'Hizmet Ata',
                   _ => 'Hizmet Ekle',
                 }),
               ),
@@ -536,9 +544,14 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
       'businesses',
       'employees',
       'services',
+      'employee-services',
       'reviews',
     }.contains(path)) {
-      out.add(('delete', Icons.delete_outline, 'Sil'));
+      out.add((
+        'delete',
+        Icons.delete_outline,
+        path == 'employee-services' ? 'Atamayı Kaldır' : 'Sil',
+      ));
     }
     return out;
   }
@@ -598,13 +611,19 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
         notice('Randevu iptal edildi.');
       } else if (action == 'delete') {
         if (!await confirm(
-          'Silme Onayı',
-          'Bu kaydı silmek istediğinize emin misiniz? Tarihsel kayıtlar güvenli biçimde korunacaktır.',
+          path == 'employee-services' ? 'Atamayı Kaldır' : 'Silme Onayı',
+          path == 'employee-services'
+              ? 'Bu hizmet atamasını kaldırmak istediğinize emin misiniz?'
+              : 'Bu kaydı silmek istediğinize emin misiniz? Tarihsel kayıtlar güvenli biçimde korunacaktır.',
         )) {
           return;
         }
         await api.delete('$path/${row['id']}');
-        notice('Kayıt başarıyla silindi.');
+        notice(
+          path == 'employee-services'
+              ? 'Hizmet ataması kaldırıldı.'
+              : 'Kayıt başarıyla silindi.',
+        );
       }
       await load();
     } catch (e) {
@@ -721,6 +740,178 @@ class _AdminDashboardState extends State<AdminDashboardScreen> {
             {'imageUrl', 'startAt', 'endAt', 'ownerUserId'}.contains(key)
         ? null
         : value.trim();
+  }
+
+  Future<void> assignEmployeeService() async {
+    List<Map<String, dynamic>> businesses;
+    try {
+      final result = await api.get('lookups/businesses');
+      businesses = (result as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (e) {
+      notice(e.toString(), error: true);
+      return;
+    }
+    if (businesses.isEmpty) {
+      notice('Aktif işletme bulunamadı.', error: true);
+      return;
+    }
+
+    int? businessId;
+    int? employeeId;
+    int? serviceId;
+    var employees = <Map<String, dynamic>>[];
+    var services = <Map<String, dynamic>>[];
+    var optionsLoading = false;
+    if (!mounted) return;
+    final selection = await showDialog<Map<String, int>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocal) {
+          Future<void> selectBusiness(int? value) async {
+            setLocal(() {
+              businessId = value;
+              employeeId = null;
+              serviceId = null;
+              employees = [];
+              services = [];
+              optionsLoading = value != null;
+            });
+            if (value == null) return;
+            try {
+              final result = await api.get(
+                'lookups/businesses/$value/assignment-options',
+              );
+              final map = Map<String, dynamic>.from(result as Map);
+              if (!dialogContext.mounted) return;
+              setLocal(() {
+                employees = (map['employees'] as List? ?? const [])
+                    .whereType<Map>()
+                    .map((item) => Map<String, dynamic>.from(item))
+                    .toList();
+                services = (map['services'] as List? ?? const [])
+                    .whereType<Map>()
+                    .map((item) => Map<String, dynamic>.from(item))
+                    .toList();
+                optionsLoading = false;
+              });
+            } catch (e) {
+              if (!dialogContext.mounted) return;
+              setLocal(() => optionsLoading = false);
+              notice(e.toString(), error: true);
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: panel,
+            title: const Text(
+              'Çalışana Hizmet Ata',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: businessId,
+                    dropdownColor: panel,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(labelText: 'İşletme'),
+                    items: businesses
+                        .map(
+                          (item) => DropdownMenuItem<int>(
+                            value: item['id'] as int,
+                            child: Text('${item['name']}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: optionsLoading ? null : selectBusiness,
+                  ),
+                  const SizedBox(height: 12),
+                  if (optionsLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(color: orange),
+                    )
+                  else ...[
+                    DropdownButtonFormField<int>(
+                      key: ValueKey('assignment-employee-$businessId'),
+                      initialValue: employeeId,
+                      dropdownColor: panel,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Çalışan'),
+                      items: employees
+                          .map(
+                            (item) => DropdownMenuItem<int>(
+                              value: item['id'] as int,
+                              child: Text('${item['fullName']}'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: businessId == null
+                          ? null
+                          : (value) => setLocal(() => employeeId = value),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      key: ValueKey('assignment-service-$businessId'),
+                      initialValue: serviceId,
+                      dropdownColor: panel,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Hizmet'),
+                      items: services
+                          .map(
+                            (item) => DropdownMenuItem<int>(
+                              value: item['id'] as int,
+                              child: Text('${item['name']}'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: businessId == null
+                          ? null
+                          : (value) => setLocal(() => serviceId = value),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('İptal'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: orange),
+                onPressed:
+                    businessId != null &&
+                        employeeId != null &&
+                        serviceId != null &&
+                        !optionsLoading
+                    ? () => Navigator.pop(dialogContext, {
+                        'businessId': businessId!,
+                        'employeeId': employeeId!,
+                        'serviceId': serviceId!,
+                      })
+                    : null,
+                child: const Text('Ata'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selection == null) return;
+    try {
+      await api.post('employee-services', selection);
+      notice('Hizmet çalışana başarıyla atandı.');
+      await load();
+    } catch (e) {
+      notice(e.toString(), error: true);
+    }
   }
 
   Future<void> edit(Map<String, dynamic>? row) async {
